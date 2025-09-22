@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Inclusion-Exclusion Flowchart</title>
+  <script src="https://unpkg.com/viz.js@2.1.2/viz.js"></script>
+  <script src="https://unpkg.com/viz.js@2.1.2/full.render.js"></script>
+  <style>
+    body { font-family: Helvetica, sans-serif; padding: 20px; }
+    #graph { margin-top: 20px; }
+    textarea { width: 100%; height: 140px; }
+    button { margin-top: 10px; padding: 5px 15px; }
+  </style>
+</head>
+<body>
+
+<h2>Flowchart Generator</h2>
+<p>Enter one node per line. Use "<strong>-></strong>" to indicate a side-track branching from the previous main node.</p>
+<textarea id="nodesInput">
+Start cohort
+Inclusion criteria met
+-> Excluded due to x reason
+Final study population
+</textarea>
+<br>
+<button onclick="renderGraph()">Generate Flowchart</button>
+
+<div id="graph"></div>
+
+<script>
+/* ---------------------------
+   Utility: measure text width
+---------------------------- */
+function getTextWidth(text, font = "12px Helvetica") {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
+
+function getNodeWidth(label, font = "12px Helvetica", padding = 20) {
+  const lines = label.split("\n");
+  const widths = lines.map(line => getTextWidth(line, font));
+  return Math.max(...widths) + padding;
+}
+
+/* ---------------------------
+   Generate safe node IDs
+---------------------------- */
+function makeNodeId(label) {
+  return label.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+/* ---------------------------
+   Main rendering function
+---------------------------- */
+function renderGraph() {
+  const lines = document.getElementById("nodesInput").value.trim().split("\n");
+
+  const mainNodes = [];
+  const branches = {}; // map main node ID -> array of side-track labels
+
+  // Parse input
+  lines.forEach(line => {
+    if (line.startsWith("->")) {
+      const sideLabel = line.replace(/^->\s*/, "");
+      const lastMain = mainNodes[mainNodes.length - 1];
+      const lastId = makeNodeId(lastMain);
+      if (!branches[lastId]) branches[lastId] = [];
+      branches[lastId].push(sideLabel);
+    } else {
+      mainNodes.push(line);
+    }
+  });
+
+  // Compute max width of main route nodes
+  const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+
+  // Start building DOT code
+  let dot = `digraph flowchart {
+    rankdir=TB;  // top to bottom
+    node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+
+  // Add main route nodes
+  mainNodes.forEach(n => {
+    const id = makeNodeId(n);
+    dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+  });
+
+  // Add side-track nodes
+  Object.values(branches).flat().forEach(n => {
+    const id = makeNodeId(n);
+    dot += `${id} [label="${n}"];\n`;
+  });
+
+  // Add dummy nodes for branching
+  Object.keys(branches).forEach(mainId => {
+    dot += `d_${mainId} [shape=point, width=0.00001, height=0.00001];\n`;
+  });
+
+  // Connect main route nodes
+  for (let i = 0; i < mainNodes.length - 1; i++) {
+    const fromId = makeNodeId(mainNodes[i]);
+    const toId = makeNodeId(mainNodes[i+1]);
+    if (branches[fromId]) {
+      const dummyId = `d_${fromId}`;
+      dot += `${fromId} -> ${dummyId} [dir=none];\n`;
+
+      // Create subgraph for side-track nodes to align horizontally
+      dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
+
+      // Connect dummy to side nodes
+      branches[fromId].forEach(n => {
+        dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+      });
+
+      // Connect dummy to the next main node
+      dot += `${dummyId} -> ${toId};\n`;
+    } else {
+      dot += `${fromId} -> ${toId};\n`;
+    }
+  }
+
+  dot += "}\n";
+
+  // Render with Viz.js
+  const viz = new Viz();
+  viz.renderSVGElement(dot)
+    .then(el => {
+      const container = document.getElementById("graph");
+      container.innerHTML = "";
+      container.appendChild(el);
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById("graph").innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+    });
+}
+
+// Initial render
+document.addEventListener('DOMContentLoaded', renderGraph);
+</script>
+
+</body>
+</html>
