@@ -183,7 +183,7 @@ function renderGraph() {
 
   // Compute max width of main route nodes
   const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
-  
+
   // Compute max width of side-track nodes
   const allSideTracks = Object.values(branches).flat();
   const maxSideWidth = allSideTracks.length > 0 ? Math.max(...allSideTracks.map(n => getNodeWidth(n))) : 0;
@@ -914,6 +914,144 @@ document.getElementById('export-pdf-btn').addEventListener('click', () => {
         alert('Error creating PDF: ' + error.message);
     }
 });
+</script>
+
+<!--
+Comments Section powered by Google Forms + Sheets
+Users can post anonymously or with name/email/website.
+All submissions go to Google Forms, responses are saved in Google Sheets.
+Approved comments are shown below. Moderation via Google Sheets "Approved" column.
+-->
+
+<h3>Comments</h3>
+
+<form id="commentForm">
+  <label>
+    Name (optional):
+    <input type="text" name="name" placeholder="Your name">
+  </label><br>
+  <label>
+    Email (optional):
+    <input type="email" name="email" placeholder="Your email">
+  </label><br>
+  <label>
+    Comment (required):
+    <textarea name="comment" required placeholder="Write your comment here"></textarea>
+  </label><br>
+  <button type="submit">Submit Comment</button>
+</form>
+
+<div id="comments" style="margin-top:1rem;"></div>
+
+<style>
+  #comments {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .comment {
+    position: relative;
+    background-color: #e0f7ff;
+    padding: 0.75rem 1rem;
+    border-radius: 15px 15px 15px 3px;
+    max-width: 80%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    animation: fadeIn 0.5s ease;
+  }
+
+  .comment strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #0077cc;
+  }
+
+  .comment::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 10px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 8px solid #e0f7ff;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script>
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBgETKW8FOzaoTJ148-JDUFVy1-XM1pC6XtliviDTAboLT2LSnlE-R1uPsyGL1ulZYxtEjvawtQygy/pub?output=csv";
+const formUrl = "https://docs.google.com/forms/d/e/1FAIpQLScaOy-1PRQMuBbwKr8j550kPbYVtPfJzHkQ21GRPTTeGEGInQ/formResponse";
+
+// Utility to parse CSV from Google Sheets
+function parseCSV(csvText) {
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0].split(',');
+  return lines.slice(1).map(line => {
+    const values = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
+    return obj;
+  });
+}
+
+// Render approved comments
+function renderComments() {
+  fetch(sheetUrl)
+    .then(res => res.text())
+    .then(text => {
+      const rows = parseCSV(text);
+      const approved = rows.filter(r => r.Approved === 'TRUE');
+      const container = document.getElementById("comments");
+      if (approved.length === 0) {
+        container.innerHTML = "<p>No comments yet.</p>";
+        return;
+      }
+      container.innerHTML = "";
+      approved.forEach(c => {
+        const div = document.createElement('div');
+        div.className = "comment";
+        div.innerHTML = `<strong>${c['Name (optional)'] || 'Anonymous'}:</strong> ${c['Comment (required)']}`;
+        container.appendChild(div);
+      });
+    })
+    .catch(err => {
+      document.getElementById("comments").innerHTML = "<p>Error loading comments.</p>";
+      console.error(err);
+    });
+}
+
+// Handle form submission to Google Forms
+document.getElementById("commentForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const formData = new FormData(this);
+
+  // Map to Google Form entry IDs
+  const payload = new URLSearchParams({
+    "entry.1195063971": formData.get("name") || "",
+    "entry.1997886196": formData.get("email") || "",
+    "entry.42723579": formData.get("comment") || ""
+  });
+
+  fetch(formUrl, { method: "POST", body: payload, mode: "no-cors" })
+    .then(() => {
+      alert("Your comment has been submitted for moderation!");
+      this.reset();
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Error submitting comment. Try again later.");
+    });
+});
+
+// Initial load of approved comments
+renderComments();
 </script>
 
 </body>
