@@ -50,9 +50,11 @@
 <ul>
     <li>Use blank lines to separate nodes.</li>
     <li>Use "<strong>-></strong>" for side-track nodes.</li>
+    <li>Optionally start with <strong>ranksep=0.5 minlen=6</strong> to control spacing.</li>
     <li>Click <strong>"Generate Flowchart"</strong> to see your diagram!</li>
     <li>See the example in the input box below.</li>
 </ul>
+<p style="font-size: 0.8em; color: #666; margin-top: 10px;"><em>Note: PDF export may not always render perfectly. Try <a href="https://svgtopdf.com/" target="_blank">svgtopdf.com</a> or similar tools to convert from SVG to PDF if needed.</em></p>
 
 <p class="footer-note">
     <small>
@@ -72,7 +74,9 @@
         </a>
     </small>
 </p>
-<textarea id="nodesInput" placeholder="Start cohort
+<textarea id="nodesInput" placeholder="ranksep=0.5 minlen=6
+
+Start cohort
 (N=XXX)
 
 Inclusion criteria met
@@ -129,8 +133,39 @@ function renderGraph() {
   const mainNodes = [];
   const branches = {}; // map main node ID -> array of side-track labels
   
-  // Parse each node block
-  nodeBlocks.forEach(block => {
+  // Check for control parameters in first block
+  let ranksep = 0.3; // default vertical spacing
+  let minlen = 4;    // default side-track spacing
+  let startIndex = 0;
+  
+  if (nodeBlocks.length > 0) {
+    const firstBlock = nodeBlocks[0].trim();
+    
+    // Check for ranksep parameter
+    const ranksepMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+)/i);
+    if (ranksepMatch) {
+      ranksep = parseFloat(ranksepMatch[1]);
+      startIndex = 1; // Skip this block
+    }
+    
+    // Check for minlen parameter
+    const minlenMatch = firstBlock.match(/minlen[=:]\s*([\d.]+)/i);
+    if (minlenMatch) {
+      minlen = parseFloat(minlenMatch[1]);
+      startIndex = 1; // Skip this block
+    }
+    
+    // Check for both parameters in one line
+    const bothMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+).*minlen[=:]\s*([\d.]+)/i);
+    if (bothMatch) {
+      ranksep = parseFloat(bothMatch[1]);
+      minlen = parseFloat(bothMatch[2]);
+      startIndex = 1; // Skip this block
+    }
+  }
+  
+  // Parse each node block (skip control block if present)
+  nodeBlocks.slice(startIndex).forEach(block => {
     const lines = block.trim().split("\n");
     const firstLine = lines[0];
     
@@ -157,7 +192,7 @@ function renderGraph() {
   let dot = `digraph flowchart {
     rankdir=TB;  // top to bottom
     node [shape=rectangle, fontname=Helvetica, fontsize=12];
-    ranksep=0.3;  // reduce vertical spacing between ranks\n`;
+    ranksep=${ranksep};  // vertical spacing between ranks\n`;
 
   // Add main route nodes
   mainNodes.forEach(n => {
@@ -189,7 +224,7 @@ function renderGraph() {
 
       // Connect dummy to side nodes with spacing
       branches[fromId].forEach(n => {
-        dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
+        dot += `${dummyId} -> ${makeNodeId(n)} [minlen=${minlen}];\n`;
       });
 
       // Connect dummy to the next main node
@@ -323,8 +358,39 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
     const mainNodes = [];
     const branches = {};
     
-    // Parse each node block
-    nodeBlocks.forEach(block => {
+    // Check for control parameters in first block
+    let ranksep = 0.3; // default vertical spacing
+    let minlen = 4;    // default side-track spacing
+    let startIndex = 0;
+    
+    if (nodeBlocks.length > 0) {
+        const firstBlock = nodeBlocks[0].trim();
+        
+        // Check for ranksep parameter
+        const ranksepMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+)/i);
+        if (ranksepMatch) {
+            ranksep = parseFloat(ranksepMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for minlen parameter
+        const minlenMatch = firstBlock.match(/minlen[=:]\s*([\d.]+)/i);
+        if (minlenMatch) {
+            minlen = parseFloat(minlenMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for both parameters in one line
+        const bothMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+).*minlen[=:]\s*([\d.]+)/i);
+        if (bothMatch) {
+            ranksep = parseFloat(bothMatch[1]);
+            minlen = parseFloat(bothMatch[2]);
+            startIndex = 1; // Skip this block
+        }
+    }
+    
+    // Parse each node block (skip control block if present)
+    nodeBlocks.slice(startIndex).forEach(block => {
         const lines = block.trim().split("\n");
         const firstLine = lines[0];
         
@@ -354,7 +420,7 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
     let dot = `digraph flowchart {
         rankdir=TB;
         node [shape=rectangle, fontname=Helvetica, fontsize=12];
-        ranksep=0.3;\n`;
+        ranksep=${ranksep};\n`;
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
@@ -378,7 +444,7 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
             dot += `${fromId} -> ${dummyId} [dir=none];\n`;
             dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
             branches[fromId].forEach(n => {
-                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
+                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=${minlen}];\n`;
             });
             dot += `${dummyId} -> ${toId};\n`;
         } else {
@@ -418,8 +484,39 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
     const mainNodes = [];
     const branches = {};
     
-    // Parse each node block
-    nodeBlocks.forEach(block => {
+    // Check for control parameters in first block
+    let ranksep = 0.3; // default vertical spacing
+    let minlen = 4;    // default side-track spacing
+    let startIndex = 0;
+    
+    if (nodeBlocks.length > 0) {
+        const firstBlock = nodeBlocks[0].trim();
+        
+        // Check for ranksep parameter
+        const ranksepMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+)/i);
+        if (ranksepMatch) {
+            ranksep = parseFloat(ranksepMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for minlen parameter
+        const minlenMatch = firstBlock.match(/minlen[=:]\s*([\d.]+)/i);
+        if (minlenMatch) {
+            minlen = parseFloat(minlenMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for both parameters in one line
+        const bothMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+).*minlen[=:]\s*([\d.]+)/i);
+        if (bothMatch) {
+            ranksep = parseFloat(bothMatch[1]);
+            minlen = parseFloat(bothMatch[2]);
+            startIndex = 1; // Skip this block
+        }
+    }
+    
+    // Parse each node block (skip control block if present)
+    nodeBlocks.slice(startIndex).forEach(block => {
         const lines = block.trim().split("\n");
         const firstLine = lines[0];
         
@@ -449,7 +546,7 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
     let dot = `digraph flowchart {
         rankdir=TB;
         node [shape=rectangle, fontname=Helvetica, fontsize=12];
-        ranksep=0.3;\n`;
+        ranksep=${ranksep};\n`;
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
@@ -473,7 +570,7 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
             dot += `${fromId} -> ${dummyId} [dir=none];\n`;
             dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
             branches[fromId].forEach(n => {
-                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
+                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=${minlen}];\n`;
             });
             dot += `${dummyId} -> ${toId};\n`;
         } else {
@@ -539,8 +636,39 @@ document.getElementById('export-pdf-btn').addEventListener('click', () => {
     const mainNodes = [];
     const branches = {};
     
-    // Parse each node block
-    nodeBlocks.forEach(block => {
+    // Check for control parameters in first block
+    let ranksep = 0.3; // default vertical spacing
+    let minlen = 4;    // default side-track spacing
+    let startIndex = 0;
+    
+    if (nodeBlocks.length > 0) {
+        const firstBlock = nodeBlocks[0].trim();
+        
+        // Check for ranksep parameter
+        const ranksepMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+)/i);
+        if (ranksepMatch) {
+            ranksep = parseFloat(ranksepMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for minlen parameter
+        const minlenMatch = firstBlock.match(/minlen[=:]\s*([\d.]+)/i);
+        if (minlenMatch) {
+            minlen = parseFloat(minlenMatch[1]);
+            startIndex = 1; // Skip this block
+        }
+        
+        // Check for both parameters in one line
+        const bothMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+).*minlen[=:]\s*([\d.]+)/i);
+        if (bothMatch) {
+            ranksep = parseFloat(bothMatch[1]);
+            minlen = parseFloat(bothMatch[2]);
+            startIndex = 1; // Skip this block
+        }
+    }
+    
+    // Parse each node block (skip control block if present)
+    nodeBlocks.slice(startIndex).forEach(block => {
         const lines = block.trim().split("\n");
         const firstLine = lines[0];
         
