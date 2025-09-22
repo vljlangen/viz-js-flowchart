@@ -69,7 +69,8 @@
             </svg>
             Link to GitHub Repo.
         </a>  © Ville Langén, 2025  &mdash; <a href="https://opensource.org/licenses/MIT" target="_blank">MIT license</a> . Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br>
-        Note: PDF export may not always render perfectly. Try <a href="https://svgtopdf.com/" target="_blank">svgtopdf.com</a> or similar tools to convert from SVG to PDF if needed.
+        Notes: PDF export may not always render perfectly. Try <a href="https://svgtopdf.com/" target="_blank">svgtopdf.com</a> or similar tools to convert from SVG to PDF if needed.<br>
+        PNG export sometimes needs a few clicks to fire up.
     </small>
 </p>
 <textarea id="nodesInput" placeholder="sep=0.5 side=6
@@ -182,6 +183,10 @@ function renderGraph() {
 
   // Compute max width of main route nodes
   const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+  
+  // Compute max width of side-track nodes
+  const allSideTracks = Object.values(branches).flat();
+  const maxSideWidth = allSideTracks.length > 0 ? Math.max(...allSideTracks.map(n => getNodeWidth(n))) : 0;
 
   // Start building DOT code
   let dot = `digraph flowchart {
@@ -192,13 +197,14 @@ function renderGraph() {
   // Add main route nodes
   mainNodes.forEach(n => {
     const id = makeNodeId(n);
-    dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+    dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}];\n`;
   });
 
   // Add side-track nodes
   Object.values(branches).flat().forEach(n => {
     const id = makeNodeId(n);
-    dot += `${id} [label="${n}"];\n`;
+    const sideWidth = maxSideWidth > 0 ? (maxSideWidth/72).toFixed(2) : '0.5';
+    dot += `${id} [label="${n}", width=${sideWidth}];\n`;
   });
 
   // Add dummy nodes for branching
@@ -412,6 +418,11 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
 
     // Generate DOT code (reuse existing logic from main render function)
     const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+    
+    // Compute max width of side-track nodes
+    const allSideTracks = Object.values(branches).flat();
+    const maxSideWidth = allSideTracks.length > 0 ? Math.max(...allSideTracks.map(n => getNodeWidth(n))) : 0;
+    
     let dot = `digraph flowchart {
         rankdir=TB;
         node [shape=rectangle, fontname=Helvetica, fontsize=12];
@@ -419,12 +430,13 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
-        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}];\n`;
     });
 
     Object.values(branches).flat().forEach(n => {
         const id = makeNodeId(n);
-        dot += `${id} [label="${n}"];\n`;
+        const sideWidth = maxSideWidth > 0 ? (maxSideWidth/72).toFixed(2) : '0.5';
+        dot += `${id} [label="${n}", width=${sideWidth}];\n`;
     });
 
     Object.keys(branches).forEach(mainId => {
@@ -538,6 +550,11 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
 
     // Generate DOT code (reuse existing logic from main render function)
     const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+    
+    // Compute max width of side-track nodes
+    const allSideTracks = Object.values(branches).flat();
+    const maxSideWidth = allSideTracks.length > 0 ? Math.max(...allSideTracks.map(n => getNodeWidth(n))) : 0;
+    
     let dot = `digraph flowchart {
         rankdir=TB;
         node [shape=rectangle, fontname=Helvetica, fontsize=12];
@@ -545,12 +562,13 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
-        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}];\n`;
     });
 
     Object.values(branches).flat().forEach(n => {
         const id = makeNodeId(n);
-        dot += `${id} [label="${n}"];\n`;
+        const sideWidth = maxSideWidth > 0 ? (maxSideWidth/72).toFixed(2) : '0.5';
+        dot += `${id} [label="${n}", width=${sideWidth}];\n`;
     });
 
     Object.keys(branches).forEach(mainId => {
