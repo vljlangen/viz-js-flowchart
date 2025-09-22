@@ -44,38 +44,19 @@
 </head>
 <body>
 
-<h2>World's Fastest, Funkiest, Free-est Flowchart-o-matic (Viz.js & Graphviz Under the Hood)</h2>
+<h2>World's Fastest, Funkiest, Free-est Flowchart-o-matic</h2>
 
 <p>Create beautiful inclusion-exclusion flowcharts in seconds!</p>
 <ul>
-    <li>Type each step of your flowchart below.</li>
-    <li>Use "<strong>-></strong>" to indicate side-track nodes branching from the previous main node.</li>
-    <li>Press <strong>Enter</strong> inside a node for multi-line text.</li>
-    <li>Click <strong>"Generate Flowchart"</strong> to instantly see your funky diagram!</li>
+    <li>Use blank lines to separate nodes.</li>
+    <li>Use "<strong>-></strong>" for side-track nodes.</li>
+    <li>Click <strong>"Generate Flowchart"</strong> to see your diagram!</li>
+    <li>See the example in the input box below.</li>
 </ul>
-
-<p>
-    <em>Note:</em> Creates single-column charts. Perfect for inclusion-exclusion diagrams, study flowcharts, and process visualizations.<br>
-</p>
-<textarea id="nodesInput">
-Start cohort
-Inclusion criteria met
--> Excluded due to x reason
-Final study population
-</textarea>
-<br>
-<div>
-<button onclick="renderGraph()">Generate Flowchart</button>
-    <button id="export-svg-btn">Export as SVG</button>
-    <button id="export-png-btn">Export as PNG</button>
-    <button id="export-pdf-btn">Export as PDF</button>
-</div>
-
-<div id="graph"></div>
 
 <p class="footer-note">
     <small>
-        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a> &mdash; Ville Langén, 2025. Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br><br>
+        <a href="https://opensource.org/licenses/MIT" target="_blank">MIT</a> &mdash; © Ville Langén, 2025. Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br><br>
         <a href="https://github.com/vljlangen/viz-js-flowchart" target="_blank" style="text-decoration:none;">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:3px;">
                 <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 
@@ -91,6 +72,26 @@ Final study population
         </a>
     </small>
 </p>
+<textarea id="nodesInput" placeholder="Start cohort
+(N=XXX)
+
+Inclusion criteria met
+(n=XXX)
+
+-> Excluded due to x reason
+(n=XXX)
+
+Final study population
+(n=XXX)"></textarea>
+<br>
+<div>
+<button onclick="renderGraph()">Generate Flowchart</button>
+    <button id="export-svg-btn">Export as SVG</button>
+    <button id="export-png-btn">Export as PNG</button>
+    <button id="export-pdf-btn">Export as PDF</button>
+</div>
+
+<div id="graph"></div>
 
 <script>
 /* ---------------------------
@@ -120,21 +121,32 @@ function makeNodeId(label) {
    Main rendering function
 ---------------------------- */
 function renderGraph() {
-  const lines = document.getElementById("nodesInput").value.trim().split("\n");
+  const input = document.getElementById("nodesInput").value.trim();
+  
+  // Split by blank lines to separate nodes
+  const nodeBlocks = input.split(/\n\s*\n/).filter(block => block.trim());
   
   const mainNodes = [];
   const branches = {}; // map main node ID -> array of side-track labels
   
-  // Parse input
-  lines.forEach(line => {
-    if (line.startsWith("->")) {
-      const sideLabel = line.replace(/^->\s*/, "");
-      const lastMain = mainNodes[mainNodes.length - 1];
-      const lastId = makeNodeId(lastMain);
-      if (!branches[lastId]) branches[lastId] = [];
-      branches[lastId].push(sideLabel);
+  // Parse each node block
+  nodeBlocks.forEach(block => {
+    const lines = block.trim().split("\n");
+    const firstLine = lines[0];
+    
+    if (firstLine.startsWith("->")) {
+      // This is a side-track node, attach it to the last main node
+      const sideLabel = lines.join("\n").replace(/^->\s*/, ""); // Join all lines
+      if (mainNodes.length > 0) {
+        const lastMain = mainNodes[mainNodes.length - 1];
+        const lastId = makeNodeId(lastMain);
+        if (!branches[lastId]) branches[lastId] = [];
+        branches[lastId].push(sideLabel);
+      }
     } else {
-      mainNodes.push(line);
+      // This is a main node - join all lines for multi-line support
+      const mainNode = lines.join("\n");
+      mainNodes.push(mainNode);
     }
   });
 
@@ -302,21 +314,32 @@ function fallbackToBitmapPDF(doc, svgString, x, y, scale) {
 
 // Export functionality
 document.getElementById('export-svg-btn').addEventListener('click', () => {
-    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    const input = document.getElementById("nodesInput").value.trim();
     
-    // Parse input (reuse existing logic)
+    // Split by blank lines to separate nodes
+    const nodeBlocks = input.split(/\n\s*\n/).filter(block => block.trim());
+    
     const mainNodes = [];
     const branches = {};
     
-    input.forEach(line => {
-        if (line.startsWith("->")) {
-            const sideLabel = line.replace(/^->\s*/, "");
-            const lastMain = mainNodes[mainNodes.length - 1];
-            const lastId = makeNodeId(lastMain);
-            if (!branches[lastId]) branches[lastId] = [];
-            branches[lastId].push(sideLabel);
+    // Parse each node block
+    nodeBlocks.forEach(block => {
+        const lines = block.trim().split("\n");
+        const firstLine = lines[0];
+        
+        if (firstLine.startsWith("->")) {
+            // This is a side-track node, attach it to the last main node
+            const sideLabel = lines.join("\n").replace(/^->\s*/, ""); // Join all lines
+            if (mainNodes.length > 0) {
+                const lastMain = mainNodes[mainNodes.length - 1];
+                const lastId = makeNodeId(lastMain);
+                if (!branches[lastId]) branches[lastId] = [];
+                branches[lastId].push(sideLabel);
+            }
         } else {
-            mainNodes.push(line);
+            // This is a main node - join all lines for multi-line support
+            const mainNode = lines.join("\n");
+            mainNodes.push(mainNode);
         }
     });
 
@@ -385,20 +408,32 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
 
 document.getElementById('export-png-btn').addEventListener('click', () => {
     // Get the same DOT code as the main render function
-    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    const input = document.getElementById("nodesInput").value.trim();
+    
+    // Split by blank lines to separate nodes
+    const nodeBlocks = input.split(/\n\s*\n/).filter(block => block.trim());
     
     const mainNodes = [];
     const branches = {};
     
-    input.forEach(line => {
-        if (line.startsWith("->")) {
-            const sideLabel = line.replace(/^->\s*/, "");
-            const lastMain = mainNodes[mainNodes.length - 1];
-            const lastId = makeNodeId(lastMain);
-            if (!branches[lastId]) branches[lastId] = [];
-            branches[lastId].push(sideLabel);
+    // Parse each node block
+    nodeBlocks.forEach(block => {
+        const lines = block.trim().split("\n");
+        const firstLine = lines[0];
+        
+        if (firstLine.startsWith("->")) {
+            // This is a side-track node, attach it to the last main node
+            const sideLabel = lines.join("\n").replace(/^->\s*/, ""); // Join all lines
+            if (mainNodes.length > 0) {
+                const lastMain = mainNodes[mainNodes.length - 1];
+                const lastId = makeNodeId(lastMain);
+                if (!branches[lastId]) branches[lastId] = [];
+                branches[lastId].push(sideLabel);
+            }
         } else {
-            mainNodes.push(line);
+            // This is a main node - join all lines for multi-line support
+            const mainNode = lines.join("\n");
+            mainNodes.push(mainNode);
         }
     });
 
@@ -493,20 +528,32 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
 
 document.getElementById('export-pdf-btn').addEventListener('click', () => {
     // Get the same DOT code as the main render function
-    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    const input = document.getElementById("nodesInput").value.trim();
+    
+    // Split by blank lines to separate nodes
+    const nodeBlocks = input.split(/\n\s*\n/).filter(block => block.trim());
     
     const mainNodes = [];
     const branches = {};
     
-    input.forEach(line => {
-        if (line.startsWith("->")) {
-            const sideLabel = line.replace(/^->\s*/, "");
-            const lastMain = mainNodes[mainNodes.length - 1];
-            const lastId = makeNodeId(lastMain);
-            if (!branches[lastId]) branches[lastId] = [];
-            branches[lastId].push(sideLabel);
+    // Parse each node block
+    nodeBlocks.forEach(block => {
+        const lines = block.trim().split("\n");
+        const firstLine = lines[0];
+        
+        if (firstLine.startsWith("->")) {
+            // This is a side-track node, attach it to the last main node
+            const sideLabel = lines.join("\n").replace(/^->\s*/, ""); // Join all lines
+            if (mainNodes.length > 0) {
+                const lastMain = mainNodes[mainNodes.length - 1];
+                const lastId = makeNodeId(lastMain);
+                if (!branches[lastId]) branches[lastId] = [];
+                branches[lastId].push(sideLabel);
+            }
         } else {
-            mainNodes.push(line);
+            // This is a main node - join all lines for multi-line support
+            const mainNode = lines.join("\n");
+            mainNodes.push(mainNode);
         }
     });
 
