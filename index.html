@@ -156,7 +156,8 @@ function renderGraph() {
   // Start building DOT code
   let dot = `digraph flowchart {
     rankdir=TB;  // top to bottom
-    node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+    node [shape=rectangle, fontname=Helvetica, fontsize=12];
+    ranksep=0.3;  // reduce vertical spacing between ranks\n`;
 
   // Add main route nodes
   mainNodes.forEach(n => {
@@ -186,9 +187,9 @@ function renderGraph() {
       // Create subgraph for side-track nodes to align horizontally
       dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
 
-      // Connect dummy to side nodes
+      // Connect dummy to side nodes with spacing
       branches[fromId].forEach(n => {
-        dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+        dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
       });
 
       // Connect dummy to the next main node
@@ -348,11 +349,12 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
         return;
     }
 
-    // Generate DOT code (reuse existing logic)
+    // Generate DOT code (reuse existing logic from main render function)
     const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
     let dot = `digraph flowchart {
         rankdir=TB;
-        node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+        node [shape=rectangle, fontname=Helvetica, fontsize=12];
+        ranksep=0.3;\n`;
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
@@ -376,7 +378,7 @@ document.getElementById('export-svg-btn').addEventListener('click', () => {
             dot += `${fromId} -> ${dummyId} [dir=none];\n`;
             dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
             branches[fromId].forEach(n => {
-                dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
             });
             dot += `${dummyId} -> ${toId};\n`;
         } else {
@@ -442,11 +444,12 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
         return;
     }
 
-    // Generate DOT code
+    // Generate DOT code (reuse existing logic from main render function)
     const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
     let dot = `digraph flowchart {
         rankdir=TB;
-        node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+        node [shape=rectangle, fontname=Helvetica, fontsize=12];
+        ranksep=0.3;\n`;
 
     mainNodes.forEach(n => {
         const id = makeNodeId(n);
@@ -470,7 +473,7 @@ document.getElementById('export-png-btn').addEventListener('click', () => {
             dot += `${fromId} -> ${dummyId} [dir=none];\n`;
             dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
             branches[fromId].forEach(n => {
-                dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+                dot += `${dummyId} -> ${makeNodeId(n)} [minlen=4];\n`;
             });
             dot += `${dummyId} -> ${toId};\n`;
         } else {
