@@ -15,7 +15,7 @@
     #graph { margin-top: 20px; }
     textarea { 
       width: 100%; 
-      height: 140px; 
+      height: 180px; 
       font-family: monospace;
       padding: 1rem;
       margin-bottom: 1rem;
@@ -50,15 +50,12 @@
 <ul>
     <li>Use blank lines to separate nodes.</li>
     <li>Use "<strong>-></strong>" for side-track nodes.</li>
-    <li>Optionally start with <strong>ranksep=0.5 minlen=6</strong> to control spacing.</li>
+    <li>Optionally start with <strong>sep=0.5 side=6</strong> to control spacing.</li>
     <li>Click <strong>"Generate Flowchart"</strong> to see your diagram!</li>
     <li>See the example in the input box below.</li>
 </ul>
-<p style="font-size: 0.8em; color: #666; margin-top: 10px;"><em>Note: PDF export may not always render perfectly. Try <a href="https://svgtopdf.com/" target="_blank">svgtopdf.com</a> or similar tools to convert from SVG to PDF if needed.</em></p>
-
 <p class="footer-note">
     <small>
-        <a href="https://opensource.org/licenses/MIT" target="_blank">MIT</a> &mdash; © Ville Langén, 2025. Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br><br>
         <a href="https://github.com/vljlangen/viz-js-flowchart" target="_blank" style="text-decoration:none;">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:3px;">
                 <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 
@@ -70,17 +67,15 @@
                 5.921.42.36.81 1.096.81 2.216 0 1.6-.015 2.89-.015 3.285 0 .315.21.69.825.57C20.565 
                 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
             </svg>
-            GitHub Repo
-        </a>
+            Link to GitHub Repo.
+        </a>  © Ville Langén, 2025  &mdash; <a href="https://opensource.org/licenses/MIT" target="_blank">MIT license</a> . Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br>
+        Note: PDF export may not always render perfectly. Try <a href="https://svgtopdf.com/" target="_blank">svgtopdf.com</a> or similar tools to convert from SVG to PDF if needed.
     </small>
 </p>
-<textarea id="nodesInput" placeholder="ranksep=0.5 minlen=6
+<textarea id="nodesInput" placeholder="sep=0.5 side=6
 
 Start cohort
 (N=XXX)
-
-Inclusion criteria met
-(n=XXX)
 
 -> Excluded due to x reason
 (n=XXX)
@@ -141,22 +136,22 @@ function renderGraph() {
   if (nodeBlocks.length > 0) {
     const firstBlock = nodeBlocks[0].trim();
     
-    // Check for ranksep parameter
-    const ranksepMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+)/i);
-    if (ranksepMatch) {
-      ranksep = parseFloat(ranksepMatch[1]);
+    // Check for sep parameter (ranksep)
+    const sepMatch = firstBlock.match(/sep[=:]\s*([\d.]+)/i);
+    if (sepMatch) {
+      ranksep = parseFloat(sepMatch[1]);
       startIndex = 1; // Skip this block
     }
     
-    // Check for minlen parameter
-    const minlenMatch = firstBlock.match(/minlen[=:]\s*([\d.]+)/i);
-    if (minlenMatch) {
-      minlen = parseFloat(minlenMatch[1]);
+    // Check for side parameter (minlen)
+    const sideMatch = firstBlock.match(/side[=:]\s*([\d.]+)/i);
+    if (sideMatch) {
+      minlen = parseFloat(sideMatch[1]);
       startIndex = 1; // Skip this block
     }
     
     // Check for both parameters in one line
-    const bothMatch = firstBlock.match(/ranksep[=:]\s*([\d.]+).*minlen[=:]\s*([\d.]+)/i);
+    const bothMatch = firstBlock.match(/sep[=:]\s*([\d.]+).*side[=:]\s*([\d.]+)/i);
     if (bothMatch) {
       ranksep = parseFloat(bothMatch[1]);
       minlen = parseFloat(bothMatch[2]);
