@@ -202,6 +202,66 @@ function renderGraph() {
     });
 }
 
+// Function to adjust SVG viewBox to include all nodes
+function adjustViewBox(svgElement, padding = 20) {
+    // Get all <g> elements with transforms (both main nodes and side-track nodes)
+    const allGroups = svgElement.querySelectorAll('g');
+    const nodeGroups = Array.from(allGroups).filter(g => {
+        const transform = g.getAttribute('transform');
+        return transform && transform.includes('translate') && g.querySelector('polygon, rect');
+    });
+
+    console.log('Found node groups:', nodeGroups.length);
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nodeGroups.forEach(g => {
+        const transform = g.getAttribute('transform'); // e.g., "translate(100,200)"
+        const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
+        if (match) {
+            const x = parseFloat(match[1]);
+            const y = parseFloat(match[2]);
+
+            // Get node width/height from the shape inside the node
+            const shape = g.querySelector('polygon, rect');
+            if (!shape) return;
+            const bbox = shape.getBBox();
+            const nodeWidth = bbox.width;
+            const nodeHeight = bbox.height;
+
+            // Calculate node bounds (centered on x,y)
+            const nodeMinX = x - nodeWidth/2;
+            const nodeMinY = y - nodeHeight/2;
+            const nodeMaxX = x + nodeWidth/2;
+            const nodeMaxY = y + nodeHeight/2;
+
+            console.log(`Node at (${x}, ${y}) bounds: [${nodeMinX}, ${nodeMinY}] to [${nodeMaxX}, ${nodeMaxY}]`);
+
+            minX = Math.min(minX, nodeMinX);
+            minY = Math.min(minY, nodeMinY);
+            maxX = Math.max(maxX, nodeMaxX);
+            maxY = Math.max(maxY, nodeMaxY);
+        }
+    });
+
+    console.log(`Final bounds: [${minX}, ${minY}] to [${maxX}, ${maxY}]`);
+
+    // If no nodes found, fallback to original viewBox
+    if (minX === Infinity) {
+        console.log('No nodes found, keeping original viewBox');
+        return;
+    }
+
+    // Add padding
+    const width = maxX - minX + 2*padding;
+    const height = maxY - minY + 2*padding;
+
+    // Adjust the SVG viewBox to include all nodes
+    const newViewBox = `${minX - padding} ${minY - padding} ${width} ${height}`;
+    console.log('Setting new viewBox:', newViewBox);
+    svgElement.setAttribute('viewBox', newViewBox);
+}
+
 // Initial render
 document.addEventListener('DOMContentLoaded', renderGraph);
 
@@ -522,18 +582,115 @@ document.getElementById('export-pdf-btn').addEventListener('click', () => {
                 svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
                 svgElement.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
                 
-                // Get SVG dimensions
-                const bbox = svgElement.getBBox();
-                const padding = 20;
+                // Smart solution: Analyze input text to find side-track nodes and calculate extra width
+                const currentViewBox = svgElement.getAttribute('viewBox');
+                console.log('Original viewBox:', currentViewBox);
+                
+                // Analyze the input text to find main route and side-track nodes
+                const input = document.getElementById("nodesInput").value.trim().split("\n");
+                const mainRouteNodes = input.filter(line => !line.startsWith("->"));
+                const sideTrackNodes = input.filter(line => line.startsWith("->"));
+                
+                console.log('Found main route nodes:', mainRouteNodes.length);
+                console.log('Found side-track nodes:', sideTrackNodes.length);
+                console.log('Side-track nodes:', sideTrackNodes);
+                
+                // Calculate width of the largest main route node
+                const mainRouteWidths = mainRouteNodes.map(node => getTextWidth(node));
+                const maxMainRouteWidth = Math.max(...mainRouteWidths);
+                console.log(`Max main route width: ${maxMainRouteWidth}px`);
+                
+                // Calculate width of the biggest side-track node (if any)
+                let maxSideTrackWidth = 0;
+                if (sideTrackNodes.length > 0) {
+                    const sideTrackWidths = sideTrackNodes.map(node => {
+                        const text = node.replace(/^->\s*/, '');
+                        const width = getTextWidth(text);
+                        console.log(`Side-track "${text}": ${width}px`);
+                        return width;
+                    });
+                    
+                    maxSideTrackWidth = Math.max(...sideTrackWidths);
+                    console.log(`Max side-track width: ${maxSideTrackWidth}px`);
+                }
+                
+                let totalWidth = maxMainRouteWidth;
+                
+                if (sideTrackNodes.length > 0) {
+                    // Add HALF of the biggest side-track width to the main route width
+                    const halfSideTrackWidth = Math.round(maxSideTrackWidth / 2);
+                    totalWidth = maxMainRouteWidth + halfSideTrackWidth + 30; // 30px padding
+                    console.log(`Main route: ${maxMainRouteWidth}px + Half side-track: ${halfSideTrackWidth}px + Padding: 30px = Total: ${totalWidth}px`);
+                }
+                
+                // Calculate main route + half side-track width, scaled to match SVG proportions
+                if (currentViewBox) {
+                    const [x, y, originalWidth, height] = currentViewBox.split(' ').map(Number);
+                    
+                    // Calculate the target width: main route + half side-track + padding
+                    let targetWidth = maxMainRouteWidth;
+                    if (sideTrackNodes.length > 0) {
+                        const halfSideTrackWidth = Math.round(maxSideTrackWidth / 2);
+                        targetWidth = maxMainRouteWidth + halfSideTrackWidth + 30; // 30px padding
+                    }
+                    
+                    // Calculate what percentage of the original SVG width the main route takes up
+                    // We'll estimate this by comparing text width to original width
+                    const mainRoutePercentage = maxMainRouteWidth / originalWidth;
+                    
+                    // Scale the target width to match the SVG's proportions
+                    const scaledTargetWidth = targetWidth / mainRoutePercentage;
+                    
+                    const newViewBox = `${x} ${y} ${scaledTargetWidth} ${height}`;
+                    svgElement.setAttribute('viewBox', newViewBox);
+                    
+                    console.log(`🔧 CALCULATED WIDTH:`);
+                    console.log(`   Original viewBox: ${currentViewBox}`);
+                    console.log(`   Main route width: ${maxMainRouteWidth}px`);
+                    console.log(`   Max side-track width: ${maxSideTrackWidth}px`);
+                    console.log(`   Half side-track: ${Math.round(maxSideTrackWidth / 2)}px`);
+                    console.log(`   Target width: ${targetWidth}px`);
+                    console.log(`   Main route % of original: ${(mainRoutePercentage * 100).toFixed(1)}%`);
+                    console.log(`   Scaled target width: ${scaledTargetWidth.toFixed(0)}px`);
+                    console.log(`   New viewBox: ${newViewBox}`);
+                } else {
+                    // Fallback: use calculated width directly
+                    const bbox = svgElement.getBBox();
+                    let targetWidth = maxMainRouteWidth;
+                    if (sideTrackNodes.length > 0) {
+                        const halfSideTrackWidth = Math.round(maxSideTrackWidth / 2);
+                        targetWidth = maxMainRouteWidth + halfSideTrackWidth + 30;
+                    }
+                    const newViewBox = `${bbox.x} ${bbox.y} ${targetWidth} ${bbox.height}`;
+                    svgElement.setAttribute('viewBox', newViewBox);
+                    console.log(`🔧 CALCULATED WIDTH (fallback):`);
+                    console.log(`   Target width: ${targetWidth}px`);
+                    console.log(`   New viewBox: ${newViewBox}`);
+                }
+                
+                // Get adjusted dimensions from the new viewBox
+                const viewBox = svgElement.getAttribute('viewBox');
+                let svgWidth, svgHeight;
+                
+                if (viewBox) {
+                    const [, , width, height] = viewBox.split(' ').map(Number);
+                    svgWidth = width;
+                    svgHeight = height;
+                } else {
+                    // Fallback to getBBox if no viewBox
+                    const bbox = svgElement.getBBox();
+                    svgWidth = bbox.width;
+                    svgHeight = bbox.height;
+                }
                 
                 // Calculate scale to fit on page
                 const pageWidth = doc.internal.pageSize.getWidth() - 40; // 20px margins
                 const pageHeight = doc.internal.pageSize.getHeight() - 40;
-                const scale = Math.min(pageWidth / bbox.width, pageHeight / bbox.height, 1);
+                const scale = Math.min(pageWidth / svgWidth, pageHeight / svgHeight, 1);
                 
                 // Position the SVG on the page
-                const x = 20 + (pageWidth - bbox.width * scale) / 2;
-                const y = 20 + (pageHeight - bbox.height * scale) / 2;
+                const x = 20 + (pageWidth - svgWidth * scale) / 2;
+                const y = 20 + (pageHeight - svgHeight * scale) / 2;
                 
                 // Use svg2pdf.js for vector PDF export
                 try {
