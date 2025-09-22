@@ -5,17 +5,58 @@
   <title>Inclusion-Exclusion Flowchart</title>
   <script src="https://unpkg.com/viz.js@2.1.2/viz.js"></script>
   <script src="https://unpkg.com/viz.js@2.1.2/full.render.js"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/svg2pdf.js@2.2.3/dist/svg2pdf.umd.js"></script>
   <style>
-    body { font-family: Helvetica, sans-serif; padding: 20px; }
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 2rem;
+    }
     #graph { margin-top: 20px; }
-    textarea { width: 100%; height: 140px; }
-    button { margin-top: 10px; padding: 5px 15px; }
+    textarea { 
+      width: 100%; 
+      height: 140px; 
+      font-family: monospace;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    button { 
+      margin: 0.2rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+    
+    .footer-note {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.4;
+      margin-top: 3rem;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+    }
+    .footer-note a {
+      color: #0077cc;
+    }
+    .footer-note a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
 
-<h2>Flowchart Generator</h2>
-<p>Enter one node per line. Use "<strong>-></strong>" to indicate a side-track branching from the previous main node.</p>
+<h2>World's Fastest, Funkiest, Free-est Flowchart-o-matic (Viz.js & Graphviz Under the Hood)</h2>
+
+<p>Create beautiful inclusion-exclusion flowcharts in seconds!</p>
+<ul>
+    <li>Type each step of your flowchart below.</li>
+    <li>Use "<strong>-></strong>" to indicate side-track nodes branching from the previous main node.</li>
+    <li>Press <strong>Enter</strong> inside a node for multi-line text.</li>
+    <li>Click <strong>"Generate Flowchart"</strong> to instantly see your funky diagram!</li>
+</ul>
+
+<p>
+    <em>Note:</em> Creates single-column charts. Perfect for inclusion-exclusion diagrams, study flowcharts, and process visualizations.<br>
+</p>
 <textarea id="nodesInput">
 Start cohort
 Inclusion criteria met
@@ -23,9 +64,33 @@ Inclusion criteria met
 Final study population
 </textarea>
 <br>
+<div>
 <button onclick="renderGraph()">Generate Flowchart</button>
+    <button id="export-svg-btn">Export as SVG</button>
+    <button id="export-png-btn">Export as PNG</button>
+    <button id="export-pdf-btn">Export as PDF</button>
+</div>
 
 <div id="graph"></div>
+
+<p class="footer-note">
+    <small>
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a> &mdash; Ville Langén, 2025. Flowcharts created don't require attribution to me; only reuse or modification of this page's code does. This web app uses <a href="https://github.com/mdaines/viz.js/" target="_blank">Viz.js</a> (MIT) under the hood.<br><br>
+        <a href="https://github.com/vljlangen/viz-js-flowchart" target="_blank" style="text-decoration:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:3px;">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 
+                0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.084-.73.084-.73 
+                1.205.084 1.84 1.236 1.84 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.775.418-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.931 
+                0-1.31.465-2.381 1.235-3.221-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.52 
+                11.52 0 0 1 3.003-.404c1.02.005 2.045.138 3.003.404 2.28-1.552 3.285-1.23 3.285-1.23.645 
+                1.653.24 2.873.12 3.176.765.84 1.23 1.911 1.23 3.221 0 4.61-2.805 5.625-5.475 
+                5.921.42.36.81 1.096.81 2.216 0 1.6-.015 2.89-.015 3.285 0 .315.21.69.825.57C20.565 
+                22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+            </svg>
+            GitHub Repo
+        </a>
+    </small>
+</p>
 
 <script>
 /* ---------------------------
@@ -56,10 +121,10 @@ function makeNodeId(label) {
 ---------------------------- */
 function renderGraph() {
   const lines = document.getElementById("nodesInput").value.trim().split("\n");
-
+  
   const mainNodes = [];
   const branches = {}; // map main node ID -> array of side-track labels
-
+  
   // Parse input
   lines.forEach(line => {
     if (line.startsWith("->")) {
@@ -139,6 +204,368 @@ function renderGraph() {
 
 // Initial render
 document.addEventListener('DOMContentLoaded', renderGraph);
+
+// Fallback function for high-quality bitmap PDF export
+function fallbackToBitmapPDF(doc, svgString, x, y, scale) {
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    
+    img.onload = () => {
+        // Create high-resolution canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        
+        // High DPI scaling (same as PNG export)
+        const highScale = 3; // 3x for good quality
+        canvas.width = img.width * highScale;
+        canvas.height = img.height * highScale;
+        ctx.scale(highScale, highScale);
+        
+        // Set white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, img.width, img.height);
+        
+        // Draw image
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        
+        // Convert to image data
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Add to PDF
+        doc.addImage(imgData, 'PNG', x, y, img.width * scale, img.height * scale);
+        doc.save('flowchart.pdf');
+    };
+    img.src = url;
+}
+
+// Export functionality
+document.getElementById('export-svg-btn').addEventListener('click', () => {
+    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    
+    // Parse input (reuse existing logic)
+    const mainNodes = [];
+    const branches = {};
+    
+    input.forEach(line => {
+        if (line.startsWith("->")) {
+            const sideLabel = line.replace(/^->\s*/, "");
+            const lastMain = mainNodes[mainNodes.length - 1];
+            const lastId = makeNodeId(lastMain);
+            if (!branches[lastId]) branches[lastId] = [];
+            branches[lastId].push(sideLabel);
+        } else {
+            mainNodes.push(line);
+        }
+    });
+
+    if (mainNodes.length === 0) {
+        alert('Please generate a flowchart first!');
+        return;
+    }
+
+    // Generate DOT code (reuse existing logic)
+    const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+    let dot = `digraph flowchart {
+        rankdir=TB;
+        node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+
+    mainNodes.forEach(n => {
+        const id = makeNodeId(n);
+        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+    });
+
+    Object.values(branches).flat().forEach(n => {
+        const id = makeNodeId(n);
+        dot += `${id} [label="${n}"];\n`;
+    });
+
+    Object.keys(branches).forEach(mainId => {
+        dot += `d_${mainId} [shape=point, width=0.00001, height=0.00001];\n`;
+    });
+
+    for (let i = 0; i < mainNodes.length - 1; i++) {
+        const fromId = makeNodeId(mainNodes[i]);
+        const toId = makeNodeId(mainNodes[i+1]);
+        if (branches[fromId]) {
+            const dummyId = `d_${fromId}`;
+            dot += `${fromId} -> ${dummyId} [dir=none];\n`;
+            dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
+            branches[fromId].forEach(n => {
+                dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+            });
+            dot += `${dummyId} -> ${toId};\n`;
+        } else {
+            dot += `${fromId} -> ${toId};\n`;
+        }
+    }
+
+    dot += "}\n";
+
+    // Use Viz.js native renderString method
+    const viz = new Viz();
+    viz.renderString(dot)
+        .then(result => {
+            const svgBlob = new Blob([result], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(svgBlob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "flowchart.svg";
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+            console.error("SVG export error:", err);
+            alert('Error exporting SVG: ' + err.message);
+        });
+});
+
+document.getElementById('export-png-btn').addEventListener('click', () => {
+    // Get the same DOT code as the main render function
+    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    
+    const mainNodes = [];
+    const branches = {};
+    
+    input.forEach(line => {
+        if (line.startsWith("->")) {
+            const sideLabel = line.replace(/^->\s*/, "");
+            const lastMain = mainNodes[mainNodes.length - 1];
+            const lastId = makeNodeId(lastMain);
+            if (!branches[lastId]) branches[lastId] = [];
+            branches[lastId].push(sideLabel);
+        } else {
+            mainNodes.push(line);
+        }
+    });
+
+    if (mainNodes.length === 0) {
+        alert('Please generate a flowchart first!');
+        return;
+    }
+
+    // Generate DOT code
+    const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+    let dot = `digraph flowchart {
+        rankdir=TB;
+        node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+
+    mainNodes.forEach(n => {
+        const id = makeNodeId(n);
+        dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+    });
+
+    Object.values(branches).flat().forEach(n => {
+        const id = makeNodeId(n);
+        dot += `${id} [label="${n}"];\n`;
+    });
+
+    Object.keys(branches).forEach(mainId => {
+        dot += `d_${mainId} [shape=point, width=0.00001, height=0.00001];\n`;
+    });
+
+    for (let i = 0; i < mainNodes.length - 1; i++) {
+        const fromId = makeNodeId(mainNodes[i]);
+        const toId = makeNodeId(mainNodes[i+1]);
+        if (branches[fromId]) {
+            const dummyId = `d_${fromId}`;
+            dot += `${fromId} -> ${dummyId} [dir=none];\n`;
+            dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
+            branches[fromId].forEach(n => {
+                dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+            });
+            dot += `${dummyId} -> ${toId};\n`;
+        } else {
+            dot += `${fromId} -> ${toId};\n`;
+        }
+    }
+
+    dot += "}\n";
+
+    // Use Viz.js native renderString method
+    const viz = new Viz();
+    viz.renderString(dot)
+        .then(svgString => {
+            // Convert SVG string to image
+            const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                
+                // Scale up for high DPI (900 DPI = ~7.5x scale from 120 DPI)
+                const scale = 7.5;
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                // Scale the context
+                ctx.scale(scale, scale);
+                
+                // Set white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, img.width, img.height);
+                
+                // Draw image
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                
+                // Convert to PNG
+                canvas.toBlob((blob) => {
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = "flowchart.png";
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                });
+            };
+            img.src = url;
+        })
+        .catch(err => {
+            console.error("PNG export error:", err);
+            alert('Error exporting PNG: ' + err.message);
+        });
+});
+
+document.getElementById('export-pdf-btn').addEventListener('click', () => {
+    // Get the same DOT code as the main render function
+    const input = document.getElementById("nodesInput").value.trim().split("\n");
+    
+    const mainNodes = [];
+    const branches = {};
+    
+    input.forEach(line => {
+        if (line.startsWith("->")) {
+            const sideLabel = line.replace(/^->\s*/, "");
+            const lastMain = mainNodes[mainNodes.length - 1];
+            const lastId = makeNodeId(lastMain);
+            if (!branches[lastId]) branches[lastId] = [];
+            branches[lastId].push(sideLabel);
+        } else {
+            mainNodes.push(line);
+        }
+    });
+
+    if (mainNodes.length === 0) {
+        alert('Please generate a flowchart first!');
+        return;
+    }
+
+    try {
+        // Check if libraries are loaded
+        if (typeof window.jspdf === 'undefined') {
+            alert('jsPDF library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        if (typeof window.svg2pdf === 'undefined') {
+            alert('svg2pdf library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const { svg2pdf } = window.svg2pdf;
+        const doc = new jsPDF();
+        
+        // Generate DOT code
+        const maxWidth = Math.max(...mainNodes.map(n => getNodeWidth(n)));
+        let dot = `digraph flowchart {
+            rankdir=TB;
+            node [shape=rectangle, fontname=Helvetica, fontsize=12];\n`;
+
+        mainNodes.forEach(n => {
+            const id = makeNodeId(n);
+            dot += `${id} [label="${n}", width=${(maxWidth/72).toFixed(2)}, fixedsize=true];\n`;
+        });
+
+        Object.values(branches).flat().forEach(n => {
+            const id = makeNodeId(n);
+            dot += `${id} [label="${n}"];\n`;
+        });
+
+        Object.keys(branches).forEach(mainId => {
+            dot += `d_${mainId} [shape=point, width=0.00001, height=0.00001];\n`;
+        });
+
+        for (let i = 0; i < mainNodes.length - 1; i++) {
+            const fromId = makeNodeId(mainNodes[i]);
+            const toId = makeNodeId(mainNodes[i+1]);
+            if (branches[fromId]) {
+                const dummyId = `d_${fromId}`;
+                dot += `${fromId} -> ${dummyId} [dir=none];\n`;
+                dot += `subgraph { rank=same; ${dummyId}; ${branches[fromId].map(n=>makeNodeId(n)).join('; ')}; }\n`;
+                branches[fromId].forEach(n => {
+                    dot += `${dummyId} -> ${makeNodeId(n)};\n`;
+                });
+                dot += `${dummyId} -> ${toId};\n`;
+            } else {
+                dot += `${fromId} -> ${toId};\n`;
+            }
+        }
+
+        dot += "}\n";
+
+        // Use Viz.js native renderString method
+        const viz = new Viz();
+        viz.renderString(dot)
+            .then(svgString => {
+                // Parse SVG string to DOM element
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+                const svgElement = svgDoc.documentElement;
+                
+                // Ensure proper namespace
+                svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                svgElement.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+                
+                // Get SVG dimensions
+                const bbox = svgElement.getBBox();
+                const padding = 20;
+                
+                // Calculate scale to fit on page
+                const pageWidth = doc.internal.pageSize.getWidth() - 40; // 20px margins
+                const pageHeight = doc.internal.pageSize.getHeight() - 40;
+                const scale = Math.min(pageWidth / bbox.width, pageHeight / bbox.height, 1);
+                
+                // Position the SVG on the page
+                const x = 20 + (pageWidth - bbox.width * scale) / 2;
+                const y = 20 + (pageHeight - bbox.height * scale) / 2;
+                
+                // Use svg2pdf.js for vector PDF export
+                try {
+                    svg2pdf(svgElement, doc, {
+                        xOffset: x,
+                        yOffset: y,
+                        scale: scale
+                    }).then(() => {
+                        doc.save('flowchart.pdf');
+                    }).catch(err => {
+                        console.error('SVG to PDF conversion error:', err);
+                        // Fallback to high-quality bitmap
+                        console.log('Falling back to high-quality bitmap export...');
+                        fallbackToBitmapPDF(doc, svgString, x, y, scale);
+                    });
+                } catch (syncErr) {
+                    console.error('Sync SVG to PDF error:', syncErr);
+                    // Fallback to high-quality bitmap
+                    console.log('Falling back to high-quality bitmap export...');
+                    fallbackToBitmapPDF(doc, svgString, x, y, scale);
+                }
+            })
+            .catch(err => {
+                console.error("PDF export error:", err);
+                alert('Error exporting PDF: ' + err.message);
+            });
+            
+    } catch (error) {
+        console.error('PDF export error:', error);
+        alert('Error creating PDF: ' + error.message);
+    }
+});
 </script>
 
 </body>
